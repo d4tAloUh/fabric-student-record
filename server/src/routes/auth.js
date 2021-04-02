@@ -5,14 +5,16 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import {NotEmpty} from "../validators/index"
+
 const router = express.Router();
-const studentRegistration = async (req, res) => {
+
+const personRegistration = async (req, res, person) => {
     try {
         const {login, password} = req.body
-        NotEmpty(login,"Login")
-        NotEmpty(password,"Password")
+        NotEmpty(login, "Login")
+        NotEmpty(password, "Password")
         const ca = new FabricCAServices("http://0.0.0.0:7054");
-        const adminData = await ca.enroll({enrollmentId: "admin", enrollmentSecret: "password"});
+        const adminData = await ca.enroll({enrollmentID: "admin", enrollmentSecret: "password"});
         const identity = {
             label: 'client',
             certificate: adminData.certificate,
@@ -35,7 +37,7 @@ const studentRegistration = async (req, res) => {
             enrollmentID: login,
             enrollmentSecret: password,
             role: 'peer',
-            affiliation: 'naukma.teacher',
+            affiliation: person,
             maxEnrollments: -1,
         }, admin);
         const userData = await ca.enroll({enrollmentID: login, enrollmentSecret: password});
@@ -54,7 +56,7 @@ const studentRegistration = async (req, res) => {
                     "error": err
                 }
             )
-        else{
+        else {
             console.error(err)
             res.status(400).json(
                 {
@@ -66,9 +68,17 @@ const studentRegistration = async (req, res) => {
 
     }
     // const caTLSCACerts = caInfo.tlsCACerts.pem;
-
 };
-router.post('/teacher', studentRegistration);
+const teacherRegistration = async (req,res) =>{
+    return personRegistration(req,res, "naukma.teacher")
+}
+const studentRegistration = async (req,res) =>{
+    return personRegistration(req,res, "naukma.student")
+}
+
+
+router.post('/teacher', teacherRegistration);
+router.post('/student', studentRegistration);
 
 // router.get('/student', (res, req) => console.log("bkakbak"));
 
