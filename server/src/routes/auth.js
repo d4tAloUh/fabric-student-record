@@ -53,14 +53,15 @@ const personRegistration = async (req, res, person) => {
         if (typeof err === "string")
             res.status(400).json(
                 {
-                    "error": err
+                    "message": err
                 }
             )
         else {
             console.error(err)
             res.status(400).json(
                 {
-                    "error": "Server error"
+                    "message": "Server error",
+                    "error": err
                 }
             )
         }
@@ -69,11 +70,11 @@ const personRegistration = async (req, res, person) => {
     }
     // const caTLSCACerts = caInfo.tlsCACerts.pem;
 };
-const teacherRegistration = async (req,res) =>{
-    return personRegistration(req,res, "naukma.teacher")
+const teacherRegistration = async (req, res) => {
+    return personRegistration(req, res, "naukma.teacher")
 }
-const studentRegistration = async (req,res) =>{
-    return personRegistration(req,res, "naukma.student")
+const studentRegistration = async (req, res) => {
+    return personRegistration(req, res, "naukma.student")
 }
 
 

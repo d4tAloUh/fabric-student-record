@@ -51,8 +51,8 @@
                 })
             })
             let data = await response.json();
-            if (data.error)
-                throw data.error
+            if (data.error.message)
+                throw data.error.message
             console.log(data)
         } catch (error) {
             alert(error)
