@@ -107,7 +107,7 @@ class StudentRecordsStorage extends Contract {
       throw new Error("This student does not exist")
     }
     const recordAsObject = JSON.parse(recordAsBytes.toString())
-    return JSON.stringify(recordAsObject.semesters[semesterNumber],null,2);
+    return JSON.stringify(recordAsObject.semesters[semesterNumber] || [],null,2);
   }
 
 }
