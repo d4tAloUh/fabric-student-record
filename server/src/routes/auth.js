@@ -3,7 +3,7 @@ import { X509WalletMixin } from 'fabric-network';
 import { getCA, getConnectedWallet, registerUser } from '../utils';
 
 const router = express.Router();
-const studentRegistration = async (req, res) => {
+const registrationAffilation = async (req, res, affilation) => {
   const { login, password } = req.body;
   try {
     const ca = getCA();
@@ -15,7 +15,7 @@ const studentRegistration = async (req, res) => {
     );
     const gateway = await getConnectedWallet('Org1MSP', mixin);
     const admin = await gateway.getCurrentIdentity()
-    await registerUser(ca, admin, { login, password, affiliation: 'teacher' });
+    await registerUser( ca, admin, { login, password, affiliation: affilation });
 
     const userData = await ca.enroll({
       enrollmentID: login,
@@ -28,10 +28,32 @@ const studentRegistration = async (req, res) => {
       privateKey: userData.key.toBytes(),
     });
   }
-  catch (e) {
-    res.status(400).json({ message: e.message });
+  catch (err) {
+    if (typeof err === "string")
+      res.status(400).json(
+          {
+            "message": err
+          }
+      )
+    else {
+      res.status(400).json(
+          {
+            "message": "Server error",
+            "error": err
+          }
+      )
+    }
   }
 };
+
+const teacherRegistration = async (req, res) => {
+  return registrationAffilation(req, res, "teacher")
+}
+const studentRegistration = async (req, res) => {
+  return registrationAffilation(req, res, "student")
+}
+
 router.post('/student', studentRegistration);
+router.post('/teacher', teacherRegistration);
 
 export default router;

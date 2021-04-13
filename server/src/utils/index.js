@@ -6,7 +6,7 @@ import yaml from 'js-yaml';
 
 export const getCA = () =>{
   try {
-    return new FabricCAService(`http://192.168.88.85:7054`)
+    return new FabricCAService(`http://0.0.0.0:7054`)
   }catch (e){
     console.error(e)
     throw new Error(e.message)
@@ -50,11 +50,10 @@ export const sendTransaction = async(gateway, transaction) => {
       'org.fabric.studentRecordsStorage');
     const issueResponse = await contract.submitTransaction(transaction.name, ...transaction.props);
     return JSON.parse(issueResponse.toString());
-    // return true;
   }
   catch (error) {
     console.log(`Error processing transaction. ${error.stack}`);
     gateway.disconnect();
-    return null;
+    throw error
   }
 }
