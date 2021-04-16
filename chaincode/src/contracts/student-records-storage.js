@@ -1,46 +1,114 @@
 'use strict';
 
-const { Contract } = require('fabric-contract-api');
-const { ClientIdentity } = require('fabric-shim');
+const {Contract} = require('fabric-contract-api');
+const {ClientIdentity} = require('fabric-shim');
 
 class StudentRecordsStorage extends Contract {
-  constructor() {
-    super('org.fabric.studentRecordsStorage');
-  }
+    constructor() {
+        super('org.fabric.studentRecordsStorage');
+    }
 
-  async createStudentRecord(ctx, studentEmail, fullName) {
-    const identity = new ClientIdentity(ctx.stub);
-    if (identity.cert.subject.organizationalUnitName !== 'teacher') {
-      throw new Error('Current subject is not have access to this function');
-    }
-    const recordAsBytes = await ctx.stub.getState(studentEmail);
-    // if(!recordAsBytes || recordAsBytes.toString().length !== 0){
-    //   throw new Error('Student with the current email already exist');
-    // }
-    const recordExample = {
-      fullName: fullName,
-      semesters: []
-    }
-    const newRecordInBytes = Buffer.from(JSON.stringify(recordExample));
-    await ctx.stub.putState(studentEmail, newRecordInBytes);
-    return JSON.stringify(recordExample, null, 2);
-  }
+    async createSubjectToRecord(ctx, studentEmail, fullName) {
+        const identity = new ClientIdentity(ctx.stub);
+        if (identity.cert.subject.organizationalUnitName !== 'teacher') {
+            throw new Error('Current subject has no access to this function')
+        }
+        const recordAsBytes = await ctx.stub.getState(studentEmail);
 
-  async addSubjectToStudentRecord(ctx, studentEmail, semesterNumber, subjectName) {
-    const identity = new ClientIdentity(ctx.stub);
-    if (identity.cert.subject.organizationalUnitName !== 'teacher') {
-      throw new Error('Current subject is not have access to this function');
+        if (!!recordAsBytes && recordAsBytes.length !== 0) {
+            throw new Error("This student already exists")
+        }
+        const newRecord = {
+            fullName,
+            semesters: [],
+        }
+        await ctx.stub.putState(studentEmail, Buffer.from(JSON.stringify(newRecord)))
+        return JSON.stringify(newRecord, null, 2);
     }
-    const recordAsBytes = await ctx.stub.getState(studentEmail);
-    const recordAsObject = JSON.parse(recordAsBytes.toString());
-    recordAsObject.semesters[semesterNumber][subjectName] = {
-      lector: identity.cert.subject.commonName,
-      themes: []
+
+    async addSubjectToStudentRecord(ctx, studentEmail, semesterNumber, subjectName) {
+        const identity = new ClientIdentity(ctx.stub);
+        if (identity.cert.subject.organizationalUnitName !== 'teacher') {
+            throw new Error('Current subject has no access to this function')
+        }
+        const recordAsBytes = await ctx.stub.getState(studentEmail);
+
+        if (recordAsBytes.length === 0) {
+            throw new Error("This student does not exist")
+        }
+        const recordAsObject = JSON.parse(recordAsBytes.toString());
+        if (recordAsObject.semesters[semesterNumber]) {
+            if (recordAsObject.semesters[semesterNumber][subjectName]) {
+                throw new Error("This student already has this subject")
+            } else
+                recordAsObject.semesters[semesterNumber][subjectName] = {
+                    lector: identity.cert.subject.commonName,
+                    themes: []
+                }
+        } else
+            recordAsObject.semesters[semesterNumber] = {
+                [subjectName]: {
+                    lector: identity.cert.subject.commonName,
+                    themes: []
+                }
+            }
+
+
+        await ctx.stub.putState(studentEmail, Buffer.from(JSON.stringify(recordAsObject)))
+        return JSON.stringify(recordAsObject, null, 2);
     }
-    const newRecordInBytes = Buffer.from(JSON.stringify(recordAsObject));
-    await ctx.stub.putState(studentEmail, newRecordInBytes);
-    return JSON.stringify(recordAsObject, null, 2);
-  }
+
+    async addGradeToStudentRecord(ctx, studentEmail, semesterNumber, subjectName, themeName, grade) {
+        const identity = new ClientIdentity(ctx.stub);
+        if (identity.cert.subject.organizationalUnitName !== 'teacher') {
+            throw new Error('Current subject has no access to this function')
+        }
+        const recordAsBytes = await ctx.stub.getState(studentEmail);
+
+        if (recordAsBytes.length === 0) {
+            throw new Error("This student does not exist")
+        }
+        const recordAsObject = JSON.parse(recordAsBytes.toString());
+
+        if (recordAsObject.semesters[semesterNumber]) {
+            if (recordAsObject.semesters[semesterNumber][subjectName]) {
+                recordAsObject.semesters[semesterNumber][subjectName]["themes"].push({
+                    title: themeName,
+                    rating: grade,
+                    date: ctx.stub.getTxTimestamp().seconds.low
+                })
+            } else {
+                throw new Error("This student is not enrolled in this subject")
+            }
+        } else {
+            throw new Error("This subject does not exist in this semester")
+        }
+
+
+        await ctx.stub.putState(studentEmail, Buffer.from(JSON.stringify(recordAsObject)))
+
+        return JSON.stringify(recordAsObject, null, 2);
+    }
+
+    async getStudentRecords(ctx, studentEmail) {
+        const recordAsBytes = await ctx.stub.getState(studentEmail);
+
+        if (recordAsBytes.length === 0) {
+            throw new Error("This student does not exist")
+        }
+        const recordAsObject = JSON.parse(recordAsBytes.toString())
+        return JSON.stringify(recordAsObject.semesters, null, 2);
+    }
+
+    async getStudentRecordsBySemester(ctx, studentEmail, semesterNumber) {
+        const recordAsBytes = await ctx.stub.getState(studentEmail);
+
+        if (recordAsBytes.length === 0) {
+            throw new Error("This student does not exist")
+        }
+        const recordAsObject = JSON.parse(recordAsBytes.toString())
+        return JSON.stringify(recordAsObject.semesters[semesterNumber] || [], null, 2);
+    }
 }
 
 module.exports = StudentRecordsStorage;
