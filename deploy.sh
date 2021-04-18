@@ -8,6 +8,7 @@ export CHANNEL_NAME=testchannel
 ../bin/configtxgen -profile Channel -outputAnchorPeersUpdate ./channel-artifacts/Org1MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org1MSP
 
 docker-compose -f docker-compose.yaml up -d
+docker-compose -f docker-compose-ca.yaml up -d
 docker exec -it cli bash
 #Login as peer0 in org1
 export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp

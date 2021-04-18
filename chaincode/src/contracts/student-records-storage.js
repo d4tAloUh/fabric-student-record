@@ -109,6 +109,94 @@ class StudentRecordsStorage extends Contract {
         const recordAsObject = JSON.parse(recordAsBytes.toString())
         return JSON.stringify(recordAsObject.semesters[semesterNumber] || [], null, 2);
     }
+
+    async getTeacherSubjects(ctx) {
+        const iterator = await ctx.stub.getStateByRange("", "");
+        let result = [];
+        const identity = new ClientIdentity(ctx.stub);
+
+        while (true) {
+            let res = await iterator.next();
+
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(result, null, 2);
+            } else {
+                let record;
+                try {
+                    record = JSON.parse(res.value.value.toString('utf8'));
+                } catch (err) {
+                    console.log(err);
+                    record = res.value.value.toString('utf8');
+                }
+                for (let i = 0; i < record.semesters.length; i++) {
+                    for (let subjectName in record.semesters[i]) {
+                        //if teacher is leading this subject
+                        if (record.semesters[i][subjectName].lector === identity.cert.subject.commonName) {
+                            let themes = []
+                            //lit all themes
+                            for (let theme of record.semesters[i][subjectName].themes) {
+                                themes.push(theme.title)
+                            }
+                            //if semester exists
+                            if (result[i]) {
+                                //if subject exists
+                                if (result[i][subjectName]) {
+                                    result[i][subjectName] = {
+                                        themes: themes.concat(result[i][subjectName].themes.filter((item) => themes.indexOf(item) < 0))
+                                    }
+                                }
+                                //subject does not exist
+                                else {
+                                    result[i] = {
+                                        [subjectName]: {
+                                            themes
+                                        }
+                                    }
+                                }
+                            }
+                            //semester does not exist; add semester with themes
+                            else {
+                                result[i] = {
+                                    [subjectName]: {
+                                        themes,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async getStudentsForSubject(ctx, subjectName, semester) {
+        const iterator = await ctx.stub.getStateByRange("", "");
+        let result = [];
+
+        while (true) {
+            let res = await iterator.next();
+
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(result, null, 2);
+            } else {
+                let record;
+                try {
+                    record = JSON.parse(res.value.value.toString('utf8'));
+                } catch (err) {
+                    console.log(err);
+                    record = res.value.value.toString('utf8');
+                }
+                if (record.semesters[semester][subjectName]) {
+                    result.push({
+                        student: res.value.key.toString('utf8'),
+                        themes: record.semesters[semester][subjectName].themes
+                    })
+                }
+            }
+        }
+    }
 }
 
 module.exports = StudentRecordsStorage;
